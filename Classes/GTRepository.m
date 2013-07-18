@@ -45,8 +45,10 @@
 #import "GTDiffFile.h"
 
 
-// The type of block passed to -enumerateSubmodulesRecursively:usingBlock:.
+// Blocks typedef for -enumerateSubmodulesRecursively:usingBlock: and
+// -enumerateStashesWithBlock:flags:error:.
 typedef void (^GTRepositorySubmoduleEnumerationBlock)(GTSubmodule *submodule, BOOL *stop);
+typedef void (^GTRepositoryStashEnumerationBlock)(size_t index, NSString *message, GTOID *oid, BOOL *stop);
 
 typedef void (^GTRepositoryTagEnumerationBlock)(GTTag *tag, BOOL *stop);
 
@@ -794,6 +796,51 @@ static int checkoutNotifyCallback(git_checkout_notify_t why, const char *path, c
 
 - (BOOL)checkoutReference:(GTReference *)target strategy:(GTCheckoutStrategyType)strategy error:(NSError **)error progressBlock:(GTCheckoutProgressBlock)progressBlock {
 	return [self checkoutReference:target strategy:strategy notifyFlags:GTCheckoutNotifyNone error:error progressBlock:progressBlock notifyBlock:nil];
+}
+
+#pragma mark Stash
+
+- (GTCommit *)stashChangesWithMessage:(NSString *)message flags:(GTRepositoryStashFlag)flags error:(NSError **)error
+{
+	git_oid oid;
+	git_signature *sign = (git_signature *)[self userSignatureForNow].git_signature;
+	
+	int gitError = git_stash_save(&oid, self.git_repository, sign, [message UTF8String], flags);
+	if (gitError != GIT_OK) {
+		if (error != NULL) *error = [NSError git_errorFor:gitError withAdditionalDescription:@"Failed to stash."];
+		return nil;
+	}
+	
+	GTCommit *commit = [self lookupObjectByGitOid:&oid error:error];
+	
+	return commit;
+}
+
+static int stashEnumerationCallback(size_t index, const char *message, const git_oid *stash_id, void *payload) {
+	GTRepositoryStashEnumerationBlock block = (__bridge GTRepositoryStashEnumerationBlock)payload;
+	
+	NSString *messageString = @(message);
+	GTOID *stash_oid = [[GTOID alloc] initWithGitOid:stash_id];
+	BOOL stop = NO;
+	
+	block(index, messageString, stash_oid, &stop);
+	
+	return stop;
+}
+
+- (void)enumerateStashesUsingBlock:(GTRepositoryStashEnumerationBlock)block {
+	NSParameterAssert(block != nil);
+	
+	git_stash_foreach(self.git_repository, &stashEnumerationCallback, &block);
+}
+
+- (BOOL)dropStashAtIndex:(size_t)index error:(NSError **)error {
+	int gitError = git_stash_drop(self.git_repository, index);
+	if (gitError != GIT_OK) {
+		if (error != NULL) *error = [NSError git_errorFor:gitError withAdditionalDescription:@"Failed to drop stash."];
+		return NO;
+	}
+	return YES;
 }
 
 @end
