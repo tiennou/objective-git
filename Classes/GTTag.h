@@ -38,9 +38,6 @@
 
 @property (nonatomic, readonly, strong) GTSignature *tagger;
 
-+ (GTTag *)tagInRepository:(GTRepository *)theRepo name:(NSString *)tagName target:(GTObject *)theTarget tagger:(GTSignature *)theTagger message:(NSString *)theMessage error:(NSError **)error;
-+ (NSString *)shaByCreatingTagInRepository:(GTRepository *)theRepo name:(NSString *)tagName target:(GTObject *)theTarget tagger:(GTSignature *)theTagger message:(NSString *)theMessage error:(NSError **)error;
-
 // The underlying `git_object` as a `git_tag` object.
 - (git_tag *)git_tag __attribute__((objc_returns_inner_pointer));
 
@@ -48,5 +45,13 @@
 - (NSString *)name;
 - (GTObject *)target;
 - (NSString *)targetType;
+
+// Recursively peel a tag until a non tag GTObject is found
+//
+// errro - Will be filled with a NSError object on failure.
+//         May be NULL.
+//
+// Returns the found object or nil on error.
+- (id)objectByPeelingTagError:(NSError **)error;
 
 @end
