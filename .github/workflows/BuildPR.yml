@@ -4,13 +4,12 @@ on: [pull_request]
 
 jobs:
   build-mac:
-    name: ${{ matrix.scheme }}
+    name: Objective-Git (Mac)
     runs-on: macOS-latest
     strategy:
       fail-fast: false
       matrix:
         xcode: [Xcode_10.3, Xcode_11.7, Xcode_12.4]
-        scheme: ['ObjectiveGit Mac', 'ObjectiveGit iOS']
     steps:
       - name: Checkout
         uses: actions/checkout@v2.3.3
@@ -20,4 +19,23 @@ jobs:
       - name: Set XCode Version
         run: sudo xcode-select -s /Applications/${{ matrix.xcode }}.app
       - name: Build project
-        run: SCHEME="${{ matrix.scheme }}" ./script/cibuild
+        run: SCHEME="ObjectiveGit Mac" ./script/cibuild
+
+  build-ios:
+    name: Objective-Git (iOS)
+    runs-on: macOS-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        xcode: [Xcode_10.3, Xcode_11.7, Xcode_12.4]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2.3.3
+        with:
+          fetch-depth: 0
+          submodules: true
+      - name: Set XCode Version
+        run: sudo xcode-select -s /Applications/${{ matrix.xcode }}.app
+      - name: Build project
+        run: SCHEME="ObjectiveGit iOS" ./script/cibuild
+
